@@ -98,6 +98,16 @@ button:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
   #actionBtn{font-size:14px;padding:0 13px}
   #actionBtn kbd{display:none}
 }
+
+#authGate{position:fixed;inset:0;z-index:40;display:grid;place-items:center;padding:20px;background:radial-gradient(circle at 50% 35%,#3a1650,#12061f 72%);color:#fff;text-align:center}
+#authGate.hidden{display:none}
+#authGate .box{max-width:400px}
+#authGate .sub{color:rgba(255,255,255,.8);font-size:15px;line-height:1.5;margin:6px 0 22px}
+#gBtn{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:12px;background:#fff;color:#1f1f1f;font-weight:600;font-size:16px;padding:12px 22px;border-radius:999px;box-shadow:0 8px 24px rgba(0,0,0,.35)}
+#gBtn:focus-visible{outline:3px solid #ffc23d;outline-offset:3px}
+#gBtn[disabled]{opacity:.6;pointer-events:none}
+#authGate .note{font-size:12px;color:rgba(255,255,255,.6);margin-top:16px;line-height:1.5}
+#authErr{color:#ffb3b3;font-size:13px;margin-top:12px;min-height:18px}
 </style>
 </head>
 <body>
@@ -125,6 +135,39 @@ button:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
   <div id="modal" class="hidden"><div class="sheet panel" id="sheet"></div></div>
 </div>
 
+<div id="authGate"><div class="box"><div class="logo">Rockstar</div><p class="sub">Sign in with Google to start your career in Neon Bay.</p>
+<button id="gBtn" disabled><svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg><span>Sign in with Google</span></button>
+<div id="authErr"></div>
+<p class="note">Signing in shares your name and Gmail address with the creator of Rockstar. It's used to know who's playing, nothing else.</p></div></div>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script>
+/* ===== Paste your Firebase web config here ===== */
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyA-IFqf8pHX2YLTxT9EtuV-tM6zIGCh8-o",
+  authDomain: "rockstar-streettostatium.firebaseapp.com",
+  projectId: "rockstar-streettostatium",
+  storageBucket: "rockstar-streettostatium.firebasestorage.app",
+  messagingSenderId: "299849497616",
+  appId: "1:299849497616:web:3bafc6ebce6f3092fc1e95"
+};
+(()=>{
+  const gate=document.getElementById('authGate'),btn=document.getElementById('gBtn'),err=document.getElementById('authErr');
+  if(!window.firebase||FIREBASE_CONFIG.apiKey.startsWith('PASTE')){err.textContent='Sign-in is not set up yet.';return;}
+  firebase.initializeApp(FIREBASE_CONFIG);
+  const auth=firebase.auth(),prov=new firebase.auth.GoogleAuthProvider();prov.setCustomParameters({prompt:'select_account'});
+  auth.getRedirectResult().catch(e=>{err.textContent='Sign-in failed. Please try again.';console.error(e);});
+  auth.onAuthStateChanged(u=>{btn.disabled=false;
+    if(u){gate.classList.add('hidden');window.ROCKSTAR_USER={name:u.displayName,email:u.email};}
+    else{gate.classList.remove('hidden');window.ROCKSTAR_USER=null;}});
+  btn.addEventListener('click',async()=>{err.textContent='';btn.disabled=true;
+    try{await auth.signInWithPopup(prov);}
+    catch(e){if(/popup-blocked|operation-not-supported|popup-closed-by-user/.test(e.code||'')&&e.code!=='auth/popup-closed-by-user'){await auth.signInWithRedirect(prov);return;}
+      if(e.code!=='auth/popup-closed-by-user'&&e.code!=='auth/cancelled-popup-request')err.textContent=e.code==='auth/unauthorized-domain'?'This website address is not approved for sign-in yet.':'Sign-in failed. Please try again.';
+      console.error(e);btn.disabled=false;}});
+  document.addEventListener('click',e=>{if(e.target.closest('[data-signout]')){auth.signOut();document.getElementById('modal').classList.add('hidden');}});
+})();
+</script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/loaders/GLTFLoader.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/utils/SkeletonUtils.js"></script>
@@ -896,7 +939,7 @@ function openJournal(){
   const stages=STAGES.map((s,k)=>`<div class="row"><span class="ic">${k<S.stage?'✅':k===S.stage?'⭐':'⬜'}</span><div class="tx">${s.name}<small>${k===0?'Where it starts':`${fmt(s.fans)} fans${s.req?`, ${s.req}`:''}`}</small></div></div>`).join('');
   const gen=GKEYS.map(k=>{const un=S.unlocked.includes(k);return`<div class="row"><span class="ic">${un?'🎵':'🔒'}</span><div class="tx">${GENRES[k].name}<small>${un?`Unlocked. Play it in ${GENRES[k].district}`:UNLOCKS[k].task}</small></div></div>`;}).join('');
   const merch=S.merch.length?S.merch.map(id=>{const[a,it]=id.split(':');const m=MERCH.find(x=>x.id===it);return`${m.icon} ${ARTISTS[a].name} ${m.name}`;}).join('<br>'):'Nothing yet. Find a 👕 merch store.';
-  openModal(`<h2>📓 Journal</h2><p class="muted">Favourite artist: <b>${S.fav?ARTISTS[S.fav].name:'none'}</b>. Shows played: ${S.shows}. Concerts: ${S.concerts}. Best grade: ${GRADES[S.bestGrade]||'none yet'}.</p><h3>Career</h3>${stages}<h3>Genres</h3>${gen}<h3>Your merch</h3><p style="font-size:14px">${merch}</p><h3>How to play</h3><p style="font-size:14px">${isTouch?'Drag on the left side of the screen to walk (push further to run). Drag on the right side to turn the camera.':'Move with WASD, hold Shift to run, drag the mouse to turn the camera, scroll to zoom. Press E to interact.'} Pink 🎤 rings are street corners to perform, gold 👕 rings are merch stores, purple 🎟️ rings are concert halls. Every neighbourhood plays its own genre.</p><button class="btn" data-act="close">Close</button><button class="btn alt" data-act="reset">Start a new career</button>`);
+  openModal(`<h2>📓 Journal</h2><p class="muted">Favourite artist: <b>${S.fav?ARTISTS[S.fav].name:'none'}</b>. Shows played: ${S.shows}. Concerts: ${S.concerts}. Best grade: ${GRADES[S.bestGrade]||'none yet'}.</p><h3>Career</h3>${stages}<h3>Genres</h3>${gen}<h3>Your merch</h3><p style="font-size:14px">${merch}</p><h3>How to play</h3><p style="font-size:14px">${isTouch?'Drag on the left side of the screen to walk (push further to run). Drag on the right side to turn the camera.':'Move with WASD, hold Shift to run, drag the mouse to turn the camera, scroll to zoom. Press E to interact.'} Pink 🎤 rings are street corners to perform, gold 👕 rings are merch stores, purple 🎟️ rings are concert halls. Every neighbourhood plays its own genre.</p><button class="btn" data-act="close">Close</button><button class="btn alt" data-act="reset">Start a new career</button>${window.ROCKSTAR_USER?`<p class="muted" style="text-align:center;font-size:13px;margin:14px 0 0">Signed in as ${window.ROCKSTAR_USER.email}</p><button class="btn alt" data-signout>Sign out</button>`:''}`);
 }
 $('journalBtn').addEventListener('click',openJournal);
 $('actionBtn').addEventListener('click',interact);
